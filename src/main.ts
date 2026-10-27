@@ -14,6 +14,8 @@ import {
   clampTextSizePx,
   measureMonoCellAspect,
 } from './lib/measureMonoCellAspect'
+import { exportPortraitPng } from './lib/exportPortraitPng'
+import { BRIGHTNESS_DEFAULT } from './lib/styleForBrightness'
 import { shuffle } from './lib/shuffle'
 import { WORD_BANK } from './lib/wordBank'
 import type { PixelSource } from './lib/sampleBrightnessGrid'
@@ -49,6 +51,10 @@ app.innerHTML = `
         <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.55" />
       </label>
       <label class="slider">
+        <span>Brightness <output id="brightnessOut" for="brightness">${BRIGHTNESS_DEFAULT.toFixed(2)}</output></span>
+        <input id="brightness" type="range" min="0" max="1" step="0.01" value="${BRIGHTNESS_DEFAULT}" />
+      </label>
+      <label class="slider">
         <span>Text size <output id="textSizeOut" for="textSize">${TEXT_SIZE_DEFAULT}</output>px</span>
         <input id="textSize" type="range" min="${TEXT_SIZE_MIN}" max="${TEXT_SIZE_MAX}" step="1" value="${TEXT_SIZE_DEFAULT}" />
       </label>
@@ -64,7 +70,8 @@ app.innerHTML = `
         </label>
       </fieldset>
       <button type="button" id="randomize" class="btn btn-secondary">Randomize words</button>
-      <button type="button" id="copy" class="btn btn-primary">Copy text</button>
+      <button type="button" id="copy" class="btn btn-secondary">Copy text</button>
+      <button type="button" id="exportPng" class="btn btn-primary">Export PNG</button>
     </section>
 
     <p class="privacy">Runs entirely in your browser — nothing is uploaded.</p>
@@ -79,15 +86,18 @@ const thumb = document.querySelector<HTMLImageElement>('#thumb')!
 const fileInput = document.querySelector<HTMLInputElement>('#file')!
 const densityInput = document.querySelector<HTMLInputElement>('#density')!
 const contrastInput = document.querySelector<HTMLInputElement>('#contrast')!
+const brightnessInput = document.querySelector<HTMLInputElement>('#brightness')!
 const textSizeInput = document.querySelector<HTMLInputElement>('#textSize')!
 const densityOut = document.querySelector<HTMLOutputElement>('#densityOut')!
 const contrastOut = document.querySelector<HTMLOutputElement>('#contrastOut')!
+const brightnessOut = document.querySelector<HTMLOutputElement>('#brightnessOut')!
 const textSizeOut = document.querySelector<HTMLOutputElement>('#textSizeOut')!
 const inkModeInputs = document.querySelectorAll<HTMLInputElement>(
   'input[name="inkMode"]',
 )
 const randomizeBtn = document.querySelector<HTMLButtonElement>('#randomize')!
 const copyBtn = document.querySelector<HTMLButtonElement>('#copy')!
+const exportPngBtn = document.querySelector<HTMLButtonElement>('#exportPng')!
 const portraitEl = document.querySelector<HTMLDivElement>('#portrait')!
 
 let pixels: PixelSource | null = null
@@ -98,6 +108,7 @@ let activeWords: string[] = [...WORD_BANK]
 function syncOutputs(): void {
   densityOut.value = Number(densityInput.value).toFixed(2)
   contrastOut.value = Number(contrastInput.value).toFixed(2)
+  brightnessOut.value = Number(brightnessInput.value).toFixed(2)
   textSizeOut.value = String(clampTextSizePx(Number(textSizeInput.value)))
 }
 
@@ -114,6 +125,7 @@ function rebuild(): void {
   if (!pixels) return
   const density = Number(densityInput.value)
   const contrast = Number(contrastInput.value)
+  const brightness = Number(brightnessInput.value)
   const fontPx = clampTextSizePx(Number(textSizeInput.value))
   const colorMode = selectedColorMode()
   // Measure mono metrics at the chosen size, then lock rows to photo aspect
@@ -125,7 +137,11 @@ function rebuild(): void {
     cellAspect,
   )
   const grid = samplePixelGrid(pixels, cols, rows)
-  latestPortrait = buildWordPortrait(grid, activeWords, { contrast, colorMode })
+  latestPortrait = buildWordPortrait(grid, activeWords, {
+    contrast,
+    brightness,
+    colorMode,
+  })
   renderPortrait(portraitEl, latestPortrait, fontPx)
 }
 
@@ -156,6 +172,10 @@ contrastInput.addEventListener('input', () => {
   syncOutputs()
   rebuild()
 })
+brightnessInput.addEventListener('input', () => {
+  syncOutputs()
+  rebuild()
+})
 textSizeInput.addEventListener('input', () => {
   syncOutputs()
   rebuild()
@@ -182,6 +202,28 @@ copyBtn.addEventListener('click', async () => {
     }, 1200)
   } catch {
     copyBtn.textContent = 'Copy failed'
+  }
+})
+
+exportPngBtn.addEventListener('click', async () => {
+  if (!latestPortrait) return
+  const fontPx = clampTextSizePx(Number(textSizeInput.value))
+  const label = exportPngBtn.textContent
+  exportPngBtn.disabled = true
+  exportPngBtn.textContent = 'Exporting…'
+  try {
+    await exportPortraitPng(latestPortrait, { fontPx })
+    exportPngBtn.textContent = 'Exported'
+    window.setTimeout(() => {
+      exportPngBtn.textContent = label
+      exportPngBtn.disabled = false
+    }, 1200)
+  } catch {
+    exportPngBtn.textContent = 'Export failed'
+    exportPngBtn.disabled = false
+    window.setTimeout(() => {
+      exportPngBtn.textContent = label
+    }, 1600)
   }
 })
 

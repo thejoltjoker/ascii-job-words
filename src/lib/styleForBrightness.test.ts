@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { styleForBrightness } from './styleForBrightness'
+import {
+  BRIGHTNESS_DEFAULT,
+  adjustBrightness,
+  styleForBrightness,
+} from './styleForBrightness'
+
+describe('adjustBrightness', () => {
+  it('leaves luminance unchanged at the default mid setting', () => {
+    expect(adjustBrightness(0.3, BRIGHTNESS_DEFAULT)).toBeCloseTo(0.3)
+    expect(adjustBrightness(0.8)).toBeCloseTo(0.8)
+  })
+
+  it('shifts luminance toward white when brightness is raised', () => {
+    expect(adjustBrightness(0.3, 1)).toBeCloseTo(0.8)
+    expect(adjustBrightness(0.4, 0.75)).toBeCloseTo(0.65)
+  })
+
+  it('shifts luminance toward black when brightness is lowered', () => {
+    expect(adjustBrightness(0.7, 0)).toBeCloseTo(0.2)
+    expect(adjustBrightness(0.5, 0.25)).toBeCloseTo(0.25)
+  })
+
+  it('clamps the adjusted luminance to 0…1', () => {
+    expect(adjustBrightness(0.9, 1)).toBe(1)
+    expect(adjustBrightness(0.1, 0)).toBe(0)
+  })
+})
 
 describe('styleForBrightness', () => {
   it('marks very light pixels blank at default contrast', () => {

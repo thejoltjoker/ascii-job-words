@@ -13,6 +13,22 @@ export type BrightnessStyle = {
   blankCutoff: number
 }
 
+/** Mid slider = no luminance shift (current portrait behavior). */
+export const BRIGHTNESS_DEFAULT = 0.5
+
+/**
+ * Offset sampled luminance by the brightness control before styling.
+ * 0.5 leaves luminance unchanged; higher shifts toward white (lighter ink),
+ * lower toward black (darker ink). Range of the offset is ±0.5.
+ */
+export function adjustBrightness(
+  luminance: number,
+  brightness: number = BRIGHTNESS_DEFAULT,
+): number {
+  const offset = (clamp01(brightness) - BRIGHTNESS_DEFAULT) * 1
+  return clamp01(luminance + offset)
+}
+
 /**
  * Higher contrast → lower blank cutoff (more of the light end becomes fill).
  */

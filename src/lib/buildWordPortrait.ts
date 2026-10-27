@@ -1,5 +1,9 @@
 import { asciiGlyphForBlank } from './asciiDensity'
-import { styleForBrightness } from './styleForBrightness'
+import {
+  BRIGHTNESS_DEFAULT,
+  adjustBrightness,
+  styleForBrightness,
+} from './styleForBrightness'
 import type { SampledCell } from './sampleBrightnessGrid'
 
 export type CharToken = {
@@ -41,6 +45,8 @@ export type ColorMode = 'grayscale' | 'color'
 
 export type PortraitOptions = {
   contrast: number
+  /** 0–1; mid (0.5) = no luminance shift. Higher → lighter ink. */
+  brightness?: number
   colorMode?: ColorMode
 }
 
@@ -82,19 +88,21 @@ export function buildWordPortrait(
   const rows = grid.length
   const cols = grid[0]?.length ?? 0
   const colorMode = options.colorMode ?? 'grayscale'
+  const brightness = options.brightness ?? BRIGHTNESS_DEFAULT
   const tokens: PortraitToken[] = []
 
   for (let r = 0; r < rows; r++) {
     const row = grid[r] ?? []
     for (let c = 0; c < cols; c++) {
       const cell = row[c] ?? { brightness: 1, r: 255, g: 255, b: 255 }
-      const style = styleForBrightness(cell.brightness, {
+      const luminance = adjustBrightness(cell.brightness, brightness)
+      const style = styleForBrightness(luminance, {
         contrast: options.contrast,
       })
       if (style.blank) {
         const token: BlankToken = {
           kind: 'blank',
-          char: asciiGlyphForBlank(cell.brightness, style.blankCutoff),
+          char: asciiGlyphForBlank(luminance, style.blankCutoff),
           fontScale: style.fontScale,
           gray: style.gray,
           row: r,

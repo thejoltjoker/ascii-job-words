@@ -18,7 +18,7 @@ function blackWhiteRow(): {
 }
 
 describe('sampleBrightnessGrid', () => {
-  it('samples letterboxed brightness into the requested grid', () => {
+  it('samples stretched brightness into the requested grid', () => {
     const grid = sampleBrightnessGrid(blackWhiteRow(), 2, 1)
     expect(grid).toHaveLength(1)
     expect(grid[0]).toHaveLength(2)
@@ -26,14 +26,13 @@ describe('sampleBrightnessGrid', () => {
     expect(grid[0]![1]).toBeGreaterThan(0.8)
   })
 
-  it('preserves aspect with letterboxing (pad as white/bright)', () => {
-    // Wide 2×1 image into a square 2×2 grid → top or bottom pad
+  it('fills the grid by stretching (no letterbox pads)', () => {
+    // Wide 2×1 into 2×2 — both rows see black|white
     const grid = sampleBrightnessGrid(blackWhiteRow(), 2, 2)
     expect(grid).toHaveLength(2)
-    const flats = grid.flat()
-    const darkCount = flats.filter((b) => b < 0.2).length
-    const brightCount = flats.filter((b) => b > 0.8).length
-    expect(darkCount).toBe(1)
-    expect(brightCount).toBeGreaterThanOrEqual(3)
+    expect(grid[0]![0]).toBeLessThan(0.2)
+    expect(grid[0]![1]).toBeGreaterThan(0.8)
+    expect(grid[1]![0]).toBeLessThan(0.2)
+    expect(grid[1]![1]).toBeGreaterThan(0.8)
   })
 })

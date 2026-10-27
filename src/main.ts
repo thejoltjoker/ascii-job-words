@@ -3,13 +3,19 @@ import {
   buildWordPortrait,
   portraitToPlainText,
 } from './lib/buildWordPortrait'
-import { gridForDensity } from './lib/gridForDensity'
+import { colsForDensity, gridForDensity } from './lib/gridForDensity'
 import { imageToPixels, loadImage } from './lib/imagePixels'
 import { renderPortrait } from './lib/renderPortrait'
 import { sampleBrightnessGrid } from './lib/sampleBrightnessGrid'
+import {
+  fontPxForCols,
+  measureMonoCellAspect,
+} from './lib/measureMonoCellAspect'
+import { shuffle } from './lib/shuffle'
 import { WORD_BANK } from './lib/wordBank'
 import type { PixelSource } from './lib/sampleBrightnessGrid'
 import type { WordPortrait } from './lib/buildWordPortrait'
+import { MONO_CELL_ASPECT } from './lib/gridForDensity'
 
 const SAMPLE_URL = '/sample.jpg'
 
@@ -36,10 +42,11 @@ app.innerHTML = `
         <input id="density" type="range" min="0" max="1" step="0.01" value="0.55" />
       </label>
       <label class="slider">
-        <span>Contrast <output id="contrastOut" for="contrast">0.62</output></span>
-        <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.62" />
+        <span>Contrast <output id="contrastOut" for="contrast">0.55</output></span>
+        <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.55" />
       </label>
-      <button type="button" id="copy" class="copy">Copy text</button>
+      <button type="button" id="randomize" class="btn btn-secondary">Randomize words</button>
+      <button type="button" id="copy" class="btn btn-primary">Copy text</button>
     </section>
 
     <p class="privacy">Runs entirely in your browser — nothing is uploaded.</p>
@@ -56,12 +63,14 @@ const densityInput = document.querySelector<HTMLInputElement>('#density')!
 const contrastInput = document.querySelector<HTMLInputElement>('#contrast')!
 const densityOut = document.querySelector<HTMLOutputElement>('#densityOut')!
 const contrastOut = document.querySelector<HTMLOutputElement>('#contrastOut')!
+const randomizeBtn = document.querySelector<HTMLButtonElement>('#randomize')!
 const copyBtn = document.querySelector<HTMLButtonElement>('#copy')!
 const portraitEl = document.querySelector<HTMLDivElement>('#portrait')!
 
 let pixels: PixelSource | null = null
 let objectUrl: string | null = null
 let latestPortrait: WordPortrait | null = null
+let activeWords: string[] = [...WORD_BANK]
 
 function syncOutputs(): void {
   densityOut.value = Number(densityInput.value).toFixed(2)
@@ -72,11 +81,18 @@ function rebuild(): void {
   if (!pixels) return
   const density = Number(densityInput.value)
   const contrast = Number(contrastInput.value)
-  const { cols, rows } = gridForDensity(density, pixels.width, pixels.height)
+  // Estimate cols, measure real mono metrics, then lock rows to photo aspect
+  const approxCols = colsForDensity(density)
+  const fontPx = fontPxForCols(approxCols)
+  const cellAspect = measureMonoCellAspect(fontPx) || MONO_CELL_ASPECT
+  const { cols, rows } = gridForDensity(
+    density,
+    pixels.width,
+    pixels.height,
+    cellAspect,
+  )
   const grid = sampleBrightnessGrid(pixels, cols, rows)
-  // Size relative to cell: denser grids use smaller type
-  const baseFontPx = Math.max(6, Math.round(520 / cols))
-  latestPortrait = buildWordPortrait(grid, WORD_BANK, { contrast, baseFontPx })
+  latestPortrait = buildWordPortrait(grid, activeWords, { contrast })
   renderPortrait(portraitEl, latestPortrait)
 }
 
@@ -108,6 +124,11 @@ contrastInput.addEventListener('input', () => {
   rebuild()
 })
 
+randomizeBtn.addEventListener('click', () => {
+  activeWords = shuffle(WORD_BANK)
+  rebuild()
+})
+
 copyBtn.addEventListener('click', async () => {
   if (!latestPortrait) return
   const text = portraitToPlainText(latestPortrait)
@@ -123,4 +144,10 @@ copyBtn.addEventListener('click', async () => {
 })
 
 syncOutputs()
-void setSource(SAMPLE_URL)
+
+void (async () => {
+  if (document.fonts?.ready) {
+    await document.fonts.ready
+  }
+  await setSource(SAMPLE_URL)
+})()

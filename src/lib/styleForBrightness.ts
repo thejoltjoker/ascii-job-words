@@ -26,9 +26,10 @@ export function styleForBrightness(
     return { blank: true, fontScale: 0, gray: 255 }
   }
 
+  // Gray carries the shade across letters; fontScale kept for API/tests
   const darkness = 1 - b
-  const fontScale = 0.55 + darkness * 0.9
-  const gray = Math.round(40 + b * 160)
+  const fontScale = 0.9 + darkness * 0.2
+  const gray = Math.round(12 + b * 180)
   return { blank: false, fontScale, gray }
 }
 

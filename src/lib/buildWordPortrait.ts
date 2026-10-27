@@ -1,9 +1,10 @@
 import { styleForBrightness } from './styleForBrightness'
 
-export type WordToken = {
-  kind: 'word'
-  word: string
-  fontPx: number
+export type CharToken = {
+  kind: 'char'
+  char: string
+  /** Multiplier on cell-relative type size (via CSS cqh) */
+  fontScale: number
   gray: number
   row: number
   col: number
@@ -19,7 +20,7 @@ export type RowBreakToken = {
   kind: 'rowBreak'
 }
 
-export type PortraitToken = WordToken | BlankToken | RowBreakToken
+export type PortraitToken = CharToken | BlankToken | RowBreakToken
 
 export type WordPortrait = {
   tokens: PortraitToken[]
@@ -29,25 +30,35 @@ export type WordPortrait = {
 
 export type PortraitOptions = {
   contrast: number
-  baseFontPx: number
+}
+
+/** Join words with spaces and cycle forever as a character stream. */
+export function createWordCharStream(words: readonly string[]): () => string {
+  if (words.length === 0) {
+    throw new Error('word bank must not be empty')
+  }
+  const stream = words.join(' ') + ' '
+  let i = 0
+  return () => {
+    const ch = stream[i % stream.length]!
+    i += 1
+    return ch
+  }
 }
 
 /**
- * Map a brightness grid (row-major, 0=black…1=white) onto cycling job words.
+ * Map a brightness grid onto a buzzword character stream.
+ * Each visible cell takes the next character; blanks skip the stream.
  */
 export function buildWordPortrait(
   brightnessGrid: number[][],
   words: readonly string[],
   options: PortraitOptions,
 ): WordPortrait {
-  if (words.length === 0) {
-    throw new Error('word bank must not be empty')
-  }
-
+  const nextChar = createWordCharStream(words)
   const rows = brightnessGrid.length
   const cols = brightnessGrid[0]?.length ?? 0
   const tokens: PortraitToken[] = []
-  let wordIndex = 0
 
   for (let r = 0; r < rows; r++) {
     const row = brightnessGrid[r] ?? []
@@ -60,12 +71,10 @@ export function buildWordPortrait(
         tokens.push({ kind: 'blank', row: r, col: c })
         continue
       }
-      const word = words[wordIndex % words.length]!
-      wordIndex += 1
       tokens.push({
-        kind: 'word',
-        word,
-        fontPx: Math.max(4, options.baseFontPx * style.fontScale),
+        kind: 'char',
+        char: nextChar(),
+        fontScale: style.fontScale,
         gray: style.gray,
         row: r,
         col: c,
@@ -87,9 +96,8 @@ export function portraitToPlainText(portrait: WordPortrait): string {
     } else if (token.kind === 'blank') {
       parts.push(' ')
     } else {
-      parts.push(token.word)
-      parts.push(' ')
+      parts.push(token.char)
     }
   }
-  return parts.join('').replace(/ +\n/g, '\n').trimEnd()
+  return parts.join('').replace(/ +\n/g, '\n').replace(/\n+$/g, '')
 }

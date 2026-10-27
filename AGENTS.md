@@ -1,0 +1,3 @@
+- Use /conventional-commit to commit changes.
+  - Commit often.
+  - Commit before making major changes.

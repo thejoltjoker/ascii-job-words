@@ -102,21 +102,33 @@ body {
   accent-color: var(--focus);
 }
 
-.copy {
+.btn {
   font-family: var(--mono);
   font-size: 0.85rem;
   padding: 0.55rem 0.9rem;
   border: 1px solid var(--ink);
-  background: var(--ink);
-  color: #f7f5f2;
   cursor: pointer;
 }
 
-.copy:hover {
+.btn-primary {
+  background: var(--ink);
+  color: #f7f5f2;
+}
+
+.btn-primary:hover {
   background: #2c2924;
 }
 
-.copy:focus-visible,
+.btn-secondary {
+  background: var(--control);
+  color: var(--ink);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-accent);
+}
+
+.btn:focus-visible,
 .upload input:focus-visible,
 .slider input:focus-visible {
   outline: 2px solid var(--focus);
@@ -140,27 +152,24 @@ body {
 .portrait {
   font-family: var(--mono);
   min-height: 12rem;
+  overflow: auto;
 }
 
-.portrait-stage {
-  position: relative;
-  width: 100%;
-  max-height: 75vh;
-  margin-inline: auto;
-}
-
-.portrait-word {
-  position: absolute;
-  transform: translate(-50%, -40%);
-  font-weight: 500;
-  letter-spacing: -0.04em;
+.portrait-pre {
+  margin: 0;
+  width: max-content;
+  font-family: var(--mono);
+  font-variant-ligatures: none;
+  /* Keep 1 so cell height matches the MONO_CELL_ASPECT used when sampling */
   line-height: 1;
-  white-space: nowrap;
-  max-width: 8em;
-  overflow: hidden;
-  text-overflow: clip;
-  pointer-events: none;
-  user-select: none;
+  letter-spacing: 0;
+  white-space: pre;
+  tab-size: 1;
+  user-select: text;
+}
+
+.portrait-char {
+  display: inline;
 }
 
 @media (max-width: 640px) {

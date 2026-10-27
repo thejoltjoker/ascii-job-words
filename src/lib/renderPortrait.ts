@@ -1,25 +1,38 @@
 import type { WordPortrait } from './buildWordPortrait'
+import { fontPxForCols } from './measureMonoCellAspect'
 
-/** Place words on the sample grid so light cells stay empty (silhouette). */
+/**
+ * Render as a monospace &lt;pre&gt; grid: one character (or space) per cell.
+ * Shading is per-glyph via color; size stays uniform so letters stay sharp.
+ */
 export function renderPortrait(container: HTMLElement, portrait: WordPortrait): void {
+  const pre = document.createElement('pre')
+  pre.className = 'portrait-pre'
+  pre.style.setProperty('--cols', String(portrait.cols))
+
+  const fontPx = fontPxForCols(portrait.cols)
+  pre.style.fontSize = `${fontPx}px`
+
   const frag = document.createDocumentFragment()
-  const stage = document.createElement('div')
-  stage.className = 'portrait-stage'
-  stage.style.aspectRatio = `${portrait.cols} / ${portrait.rows}`
 
   for (const token of portrait.tokens) {
-    if (token.kind !== 'word') continue
+    if (token.kind === 'rowBreak') {
+      frag.append(document.createTextNode('\n'))
+      continue
+    }
+    if (token.kind === 'blank') {
+      frag.append(document.createTextNode(' '))
+      continue
+    }
     const span = document.createElement('span')
-    span.className = 'portrait-word'
-    span.textContent = token.word
-    span.title = token.word
-    span.style.left = `${(token.col / portrait.cols) * 100}%`
-    span.style.top = `${(token.row / portrait.rows) * 100}%`
-    span.style.fontSize = `${token.fontPx}px`
+    span.className = 'portrait-char'
+    span.textContent = token.char
     span.style.color = `rgb(${token.gray}, ${token.gray}, ${token.gray})`
-    stage.append(span)
+    // Tiny optical weight for darker samples without changing metrics
+    span.style.fontWeight = token.gray < 90 ? '600' : '400'
+    frag.append(span)
   }
 
-  frag.append(stage)
-  container.replaceChildren(frag)
+  pre.append(frag)
+  container.replaceChildren(pre)
 }

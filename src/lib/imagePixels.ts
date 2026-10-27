@@ -9,9 +9,9 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Draw an image to a canvas and return RGBA pixels (max edge 800 for speed). */
+/** Draw an image to a canvas and return RGBA pixels (max edge 1400 for fine grids). */
 export function imageToPixels(img: CanvasImageSource & { width: number; height: number }): PixelSource {
-  const maxEdge = 800
+  const maxEdge = 1400
   const scale = Math.min(1, maxEdge / Math.max(img.width, img.height))
   const width = Math.max(1, Math.round(img.width * scale))
   const height = Math.max(1, Math.round(img.height * scale))

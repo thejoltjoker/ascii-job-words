@@ -5,7 +5,9 @@ export type PixelSource = {
 }
 
 /**
- * Fit the whole image into cols×rows (letterbox). Padded cells read as white.
+ * Stretch the image to fill cols×rows (standard ASCII sampling).
+ * The grid aspect is chosen for monospace cells; stretching here cancels
+ * that so the portrait is not letterbox-squished on screen.
  * Brightness is relative luminance in 0…1 (0 = black).
  */
 export function sampleBrightnessGrid(
@@ -17,28 +19,19 @@ export function sampleBrightnessGrid(
     throw new Error('grid dimensions must be positive')
   }
 
-  const scale = Math.min(cols / source.width, rows / source.height)
-  const drawW = source.width * scale
-  const drawH = source.height * scale
-  const offsetX = (cols - drawW) / 2
-  const offsetY = (rows - drawH) / 2
-
   const grid: number[][] = []
   for (let r = 0; r < rows; r++) {
     const row: number[] = []
+    const srcY = Math.min(
+      source.height - 1,
+      Math.floor(((r + 0.5) / rows) * source.height),
+    )
     for (let c = 0; c < cols; c++) {
-      const srcX = (c + 0.5 - offsetX) / scale
-      const srcY = (r + 0.5 - offsetY) / scale
-      if (
-        srcX < 0 ||
-        srcY < 0 ||
-        srcX >= source.width ||
-        srcY >= source.height
-      ) {
-        row.push(1)
-        continue
-      }
-      row.push(luminanceAt(source, Math.floor(srcX), Math.floor(srcY)))
+      const srcX = Math.min(
+        source.width - 1,
+        Math.floor(((c + 0.5) / cols) * source.width),
+      )
+      row.push(luminanceAt(source, srcX, srcY))
     }
     grid.push(row)
   }

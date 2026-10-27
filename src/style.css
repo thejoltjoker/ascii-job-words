@@ -102,6 +102,40 @@ body {
   accent-color: var(--focus);
 }
 
+.ink-mode {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.ink-mode legend {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0;
+  margin-bottom: 0.35rem;
+}
+
+.ink-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.75rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ink-option input {
+  accent-color: var(--focus);
+}
+
 .btn {
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -130,7 +164,8 @@ body {
 
 .btn:focus-visible,
 .upload input:focus-visible,
-.slider input:focus-visible {
+.slider input:focus-visible,
+.ink-option input:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

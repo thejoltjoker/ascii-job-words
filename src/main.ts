@@ -3,18 +3,21 @@ import {
   buildWordPortrait,
   portraitToPlainText,
 } from './lib/buildWordPortrait'
-import { colsForDensity, gridForDensity } from './lib/gridForDensity'
+import { gridForDensity } from './lib/gridForDensity'
 import { imageToPixels, loadImage } from './lib/imagePixels'
 import { renderPortrait } from './lib/renderPortrait'
-import { sampleBrightnessGrid } from './lib/sampleBrightnessGrid'
+import { samplePixelGrid } from './lib/sampleBrightnessGrid'
 import {
-  fontPxForCols,
+  TEXT_SIZE_DEFAULT,
+  TEXT_SIZE_MAX,
+  TEXT_SIZE_MIN,
+  clampTextSizePx,
   measureMonoCellAspect,
 } from './lib/measureMonoCellAspect'
 import { shuffle } from './lib/shuffle'
 import { WORD_BANK } from './lib/wordBank'
 import type { PixelSource } from './lib/sampleBrightnessGrid'
-import type { WordPortrait } from './lib/buildWordPortrait'
+import type { ColorMode, WordPortrait } from './lib/buildWordPortrait'
 import { MONO_CELL_ASPECT } from './lib/gridForDensity'
 
 const SAMPLE_URL = '/sample.jpg'
@@ -45,6 +48,21 @@ app.innerHTML = `
         <span>Contrast <output id="contrastOut" for="contrast">0.55</output></span>
         <input id="contrast" type="range" min="0" max="1" step="0.01" value="0.55" />
       </label>
+      <label class="slider">
+        <span>Text size <output id="textSizeOut" for="textSize">${TEXT_SIZE_DEFAULT}</output>px</span>
+        <input id="textSize" type="range" min="${TEXT_SIZE_MIN}" max="${TEXT_SIZE_MAX}" step="1" value="${TEXT_SIZE_DEFAULT}" />
+      </label>
+      <fieldset class="ink-mode">
+        <legend>Ink</legend>
+        <label class="ink-option">
+          <input type="radio" name="inkMode" value="grayscale" checked />
+          Grayscale
+        </label>
+        <label class="ink-option">
+          <input type="radio" name="inkMode" value="color" />
+          Color
+        </label>
+      </fieldset>
       <button type="button" id="randomize" class="btn btn-secondary">Randomize words</button>
       <button type="button" id="copy" class="btn btn-primary">Copy text</button>
     </section>
@@ -61,8 +79,13 @@ const thumb = document.querySelector<HTMLImageElement>('#thumb')!
 const fileInput = document.querySelector<HTMLInputElement>('#file')!
 const densityInput = document.querySelector<HTMLInputElement>('#density')!
 const contrastInput = document.querySelector<HTMLInputElement>('#contrast')!
+const textSizeInput = document.querySelector<HTMLInputElement>('#textSize')!
 const densityOut = document.querySelector<HTMLOutputElement>('#densityOut')!
 const contrastOut = document.querySelector<HTMLOutputElement>('#contrastOut')!
+const textSizeOut = document.querySelector<HTMLOutputElement>('#textSizeOut')!
+const inkModeInputs = document.querySelectorAll<HTMLInputElement>(
+  'input[name="inkMode"]',
+)
 const randomizeBtn = document.querySelector<HTMLButtonElement>('#randomize')!
 const copyBtn = document.querySelector<HTMLButtonElement>('#copy')!
 const portraitEl = document.querySelector<HTMLDivElement>('#portrait')!
@@ -75,15 +98,25 @@ let activeWords: string[] = [...WORD_BANK]
 function syncOutputs(): void {
   densityOut.value = Number(densityInput.value).toFixed(2)
   contrastOut.value = Number(contrastInput.value).toFixed(2)
+  textSizeOut.value = String(clampTextSizePx(Number(textSizeInput.value)))
+}
+
+function selectedColorMode(): ColorMode {
+  for (const input of inkModeInputs) {
+    if (input.checked) {
+      return input.value === 'color' ? 'color' : 'grayscale'
+    }
+  }
+  return 'grayscale'
 }
 
 function rebuild(): void {
   if (!pixels) return
   const density = Number(densityInput.value)
   const contrast = Number(contrastInput.value)
-  // Estimate cols, measure real mono metrics, then lock rows to photo aspect
-  const approxCols = colsForDensity(density)
-  const fontPx = fontPxForCols(approxCols)
+  const fontPx = clampTextSizePx(Number(textSizeInput.value))
+  const colorMode = selectedColorMode()
+  // Measure mono metrics at the chosen size, then lock rows to photo aspect
   const cellAspect = measureMonoCellAspect(fontPx) || MONO_CELL_ASPECT
   const { cols, rows } = gridForDensity(
     density,
@@ -91,9 +124,9 @@ function rebuild(): void {
     pixels.height,
     cellAspect,
   )
-  const grid = sampleBrightnessGrid(pixels, cols, rows)
-  latestPortrait = buildWordPortrait(grid, activeWords, { contrast })
-  renderPortrait(portraitEl, latestPortrait)
+  const grid = samplePixelGrid(pixels, cols, rows)
+  latestPortrait = buildWordPortrait(grid, activeWords, { contrast, colorMode })
+  renderPortrait(portraitEl, latestPortrait, fontPx)
 }
 
 async function setSource(url: string, revokePrevious = false): Promise<void> {
@@ -123,6 +156,15 @@ contrastInput.addEventListener('input', () => {
   syncOutputs()
   rebuild()
 })
+textSizeInput.addEventListener('input', () => {
+  syncOutputs()
+  rebuild()
+})
+for (const input of inkModeInputs) {
+  input.addEventListener('change', () => {
+    rebuild()
+  })
+}
 
 randomizeBtn.addEventListener('click', () => {
   activeWords = shuffle(WORD_BANK)

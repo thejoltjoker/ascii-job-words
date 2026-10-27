@@ -1,4 +1,5 @@
 import { styleForBrightness } from './styleForBrightness'
+import type { SampledCell } from './sampleBrightnessGrid'
 
 export type CharToken = {
   kind: 'char'
@@ -6,6 +7,8 @@ export type CharToken = {
   /** Multiplier on cell-relative type size (via CSS cqh) */
   fontScale: number
   gray: number
+  /** Sampled RGB when color mode is on */
+  color?: { r: number; g: number; b: number }
   row: number
   col: number
 }
@@ -28,8 +31,11 @@ export type WordPortrait = {
   cols: number
 }
 
+export type ColorMode = 'grayscale' | 'color'
+
 export type PortraitOptions = {
   contrast: number
+  colorMode?: ColorMode
 }
 
 /** Join words with spaces and cycle forever as a character stream. */
@@ -47,38 +53,43 @@ export function createWordCharStream(words: readonly string[]): () => string {
 }
 
 /**
- * Map a brightness grid onto a buzzword character stream.
+ * Map a sampled pixel grid onto a buzzword character stream.
  * Each visible cell takes the next character; blanks skip the stream.
  */
 export function buildWordPortrait(
-  brightnessGrid: number[][],
+  grid: SampledCell[][],
   words: readonly string[],
   options: PortraitOptions,
 ): WordPortrait {
   const nextChar = createWordCharStream(words)
-  const rows = brightnessGrid.length
-  const cols = brightnessGrid[0]?.length ?? 0
+  const rows = grid.length
+  const cols = grid[0]?.length ?? 0
+  const colorMode = options.colorMode ?? 'grayscale'
   const tokens: PortraitToken[] = []
 
   for (let r = 0; r < rows; r++) {
-    const row = brightnessGrid[r] ?? []
+    const row = grid[r] ?? []
     for (let c = 0; c < cols; c++) {
-      const brightness = row[c] ?? 1
-      const style = styleForBrightness(brightness, {
+      const cell = row[c] ?? { brightness: 1, r: 255, g: 255, b: 255 }
+      const style = styleForBrightness(cell.brightness, {
         contrast: options.contrast,
       })
       if (style.blank) {
         tokens.push({ kind: 'blank', row: r, col: c })
         continue
       }
-      tokens.push({
+      const token: CharToken = {
         kind: 'char',
         char: nextChar(),
         fontScale: style.fontScale,
         gray: style.gray,
         row: r,
         col: c,
-      })
+      }
+      if (colorMode === 'color') {
+        token.color = { r: cell.r, g: cell.g, b: cell.b }
+      }
+      tokens.push(token)
     }
     if (r < rows - 1) {
       tokens.push({ kind: 'rowBreak' })

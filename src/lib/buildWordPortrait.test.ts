@@ -25,14 +25,38 @@ describe('buildWordPortrait', () => {
     expect(chars).toEqual(['R', 'e', 'a', 'c', 't'])
   })
 
-  it('leaves light cells blank without consuming the stream', () => {
+  it('fills light cells with ASCII density glyphs without consuming the stream', () => {
     const portrait = buildWordPortrait([row(0.1, 0.95, 0.1)], words, {
       contrast: 0.5,
     })
     expect(portrait.tokens.map((t) => t.kind)).toEqual(['char', 'blank', 'char'])
+    const fill = portrait.tokens[1]
+    expect(fill?.kind).toBe('blank')
+    if (fill?.kind === 'blank') {
+      expect(fill.char).toMatch(/[ .:-=+*#%@]/)
+      expect(fill.gray).toBeGreaterThan(150)
+    }
     if (portrait.tokens[0]?.kind === 'char' && portrait.tokens[2]?.kind === 'char') {
       expect(portrait.tokens[0].char).toBe('R')
       expect(portrait.tokens[2].char).toBe('e')
+    }
+  })
+
+  it('attaches muted sampled RGB on blank fills in color mode', () => {
+    const grid: SampledCell[][] = [
+      [{ brightness: 0.95, r: 200, g: 40, b: 55 }],
+    ]
+    const portrait = buildWordPortrait(grid, words, {
+      contrast: 0.5,
+      colorMode: 'color',
+    })
+    const token = portrait.tokens[0]
+    expect(token?.kind).toBe('blank')
+    if (token?.kind === 'blank') {
+      expect(token.color).toBeDefined()
+      expect(token.color!.r).toBeGreaterThan(200)
+      expect(token.color!.g).toBeGreaterThan(40)
+      expect(token.color!.b).toBeGreaterThan(55)
     }
   })
 
@@ -91,13 +115,13 @@ describe('buildWordPortrait', () => {
     }
   })
 
-  it('exports a monospace plain-text grid', () => {
+  it('exports a monospace plain-text grid including fill glyphs', () => {
     const portrait = buildWordPortrait(
       [row(0.1, 0.95, 0.1), row(0.1, 0.1, 0.1)],
       words,
       { contrast: 0.5 },
     )
     const text = portraitToPlainText(portrait)
-    expect(text).toBe('R e\nact')
+    expect(text).toMatch(/^R.e\nact$/)
   })
 })

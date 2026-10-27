@@ -1,7 +1,8 @@
 import type { WordPortrait } from './buildWordPortrait'
 
 /**
- * Render as a monospace &lt;pre&gt; grid: one character (or space) per cell.
+ * Render as a monospace &lt;pre&gt; grid: one character per cell.
+ * Ink cells use buzzword glyphs; blank/light cells use classic ASCII fill.
  * Shading is per-glyph via color; size stays uniform so letters stay sharp.
  */
 export function renderPortrait(
@@ -21,20 +22,21 @@ export function renderPortrait(
       frag.append(document.createTextNode('\n'))
       continue
     }
-    if (token.kind === 'blank') {
-      frag.append(document.createTextNode(' '))
-      continue
-    }
     const span = document.createElement('span')
-    span.className = 'portrait-char'
+    span.className =
+      token.kind === 'blank' ? 'portrait-char portrait-fill' : 'portrait-char'
     span.textContent = token.char
     if (token.color) {
       span.style.color = `rgb(${token.color.r}, ${token.color.g}, ${token.color.b})`
     } else {
       span.style.color = `rgb(${token.gray}, ${token.gray}, ${token.gray})`
     }
-    // Tiny optical weight for darker samples without changing metrics
-    span.style.fontWeight = token.gray < 90 ? '600' : '400'
+    // Tiny optical weight for darker ink samples without changing metrics
+    if (token.kind === 'char') {
+      span.style.fontWeight = token.gray < 90 ? '600' : '400'
+    } else {
+      span.style.fontWeight = '400'
+    }
     frag.append(span)
   }
 

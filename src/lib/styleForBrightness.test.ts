@@ -5,6 +5,9 @@ describe('styleForBrightness', () => {
   it('marks very light pixels blank at default contrast', () => {
     const style = styleForBrightness(0.95, { contrast: 0.5 })
     expect(style.blank).toBe(true)
+    expect(style.gray).toBeLessThan(255)
+    expect(style.gray).toBeGreaterThan(150)
+    expect(style.blankCutoff).toBeCloseTo(0.68)
   })
 
   it('marks dark pixels visible with larger size and darker gray', () => {

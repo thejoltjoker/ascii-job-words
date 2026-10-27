@@ -1,3 +1,4 @@
+import { asciiGlyphForBlank } from './asciiDensity'
 import { styleForBrightness } from './styleForBrightness'
 import type { SampledCell } from './sampleBrightnessGrid'
 
@@ -13,8 +14,13 @@ export type CharToken = {
   col: number
 }
 
+/** Light-cell fill: classic ASCII density glyph; does not consume the word stream. */
 export type BlankToken = {
   kind: 'blank'
+  char: string
+  fontScale: number
+  gray: number
+  color?: { r: number; g: number; b: number }
   row: number
   col: number
 }
@@ -52,9 +58,20 @@ export function createWordCharStream(words: readonly string[]): () => string {
   }
 }
 
+/** Soften sampled RGB toward white so fill glyphs stay muted vs ink. */
+function mutedFillColor(cell: SampledCell): { r: number; g: number; b: number } {
+  const mix = 0.62
+  return {
+    r: Math.round(cell.r * (1 - mix) + 255 * mix),
+    g: Math.round(cell.g * (1 - mix) + 255 * mix),
+    b: Math.round(cell.b * (1 - mix) + 255 * mix),
+  }
+}
+
 /**
  * Map a sampled pixel grid onto a buzzword character stream.
- * Each visible cell takes the next character; blanks skip the stream.
+ * Dark (ink) cells take the next word character; light cells get a classic
+ * ASCII density glyph and skip the stream.
  */
 export function buildWordPortrait(
   grid: SampledCell[][],
@@ -75,7 +92,18 @@ export function buildWordPortrait(
         contrast: options.contrast,
       })
       if (style.blank) {
-        tokens.push({ kind: 'blank', row: r, col: c })
+        const token: BlankToken = {
+          kind: 'blank',
+          char: asciiGlyphForBlank(cell.brightness, style.blankCutoff),
+          fontScale: style.fontScale,
+          gray: style.gray,
+          row: r,
+          col: c,
+        }
+        if (colorMode === 'color') {
+          token.color = mutedFillColor(cell)
+        }
+        tokens.push(token)
         continue
       }
       const token: CharToken = {
@@ -105,7 +133,7 @@ export function portraitToPlainText(portrait: WordPortrait): string {
     if (token.kind === 'rowBreak') {
       parts.push('\n')
     } else if (token.kind === 'blank') {
-      parts.push(' ')
+      parts.push(token.char)
     } else {
       parts.push(token.char)
     }
